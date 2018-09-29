@@ -3,7 +3,7 @@
 //  MKV2MP4
 //
 //  Created by Kismet Iheke on 3/31/18.
-//  2018 EXE. LLC. DOYOU
+//  2018 EXE. LLC. DOYOU License
 //
 
 import Cocoa
@@ -103,7 +103,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate {
         let task = DispatchWorkItem {
         process.launchPath = launchPath
         process.arguments = [
-            "-i" , inputFilePath,
+            "-i", inputFilePath,
             "-c",
             "copy", outputFilePath,
             "-hide_banner",
@@ -171,6 +171,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate {
     }
     @IBAction func browseFile(sender: AnyObject) {
         
+        self.indicator.doubleValue = 0.0
         let dialog = NSOpenPanel();
         
         dialog.title                   = "Choose a .MKV file";
