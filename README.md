@@ -2,7 +2,7 @@
 
 Quickly remux .mkv to .mp4.
 
-[[https://github.com/kismet-/MKV2MP4/tree/master/MKV2MP4/screenshot/MKV2MP4|alt=MKV2MP4]]
+[[https://github.com/kismet-/MKV2MP4/tree/master/MKV2MP4/screenshot/MKV2MP4.png|alt=MKV2MP4]]
 
 MKV2MP4 uses ffmpeg
 
