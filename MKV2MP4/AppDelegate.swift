@@ -3,7 +3,7 @@
 //  MKV2MP4
 //
 //  Created by Kismet Iheke on 3/31/18.
-//  2018 EXE. LLC. DOYOU License
+//  2018 EXE LLC DOYOU License
 //
 
 import Cocoa
@@ -117,15 +117,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate {
             outHandle.readabilityHandler = { pipe in
                 if let line = String(data: pipe.readData(ofLength: 300), encoding: String.Encoding.utf8) {
                     
-                    let filename = getDocumentsDirectory().appendingPathComponent("output.txt")
-                    
-                    do {
-                        try line.write(to: filename, atomically: true, encoding: String.Encoding.utf8)
-                    } catch {
-                        // failed to write file – bad permissions, bad filename, missing permissions, or more likely it can't be converted to the encoding
-                    }
-                    // Update your view with the new text here
-
                     DispatchQueue.main.sync {
                         do {
                             let regex = try NSRegularExpression(pattern: "frame=(.*)", options: NSRegularExpression.Options.caseInsensitive)
@@ -136,13 +127,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate {
                                 if let swiftRange = Range(range, in: line) {
                                     let name = line[swiftRange]
                                     
-                                    
                                     if let range = name.range(of: " ") {
                                         let firstPart = name[(name.startIndex)..<range.lowerBound]
                                         if firstPart != "" {
                                             self.indicator.doubleValue = (Double(firstPart))!/61629.00
                                             print(self.indicator.doubleValue)
-                                            self.text.stringValue = outputFilePath
                                         }
                                     }
                                 }
@@ -200,5 +189,3 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate {
         print(text)
     }
 }
-
-
