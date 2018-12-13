@@ -21,7 +21,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate {
     var toolbar: NSToolbar!
     
     let toolbarItems: [[String: String]] = [
-        ["title": "Add", "icon": NSImage.Name.addTemplate.rawValue, "identifier": "AddToolbarItem"]
+        ["title": "Add", "icon": NSImage.addTemplateName, "identifier": "AddToolbarItem"]
     ]
     
     var toolbarTabsIdentifiers: [NSToolbarItem.Identifier] {
@@ -34,7 +34,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate {
         
         window.setContentSize(NSSize(width:400, height:80))
         
-        toolbar = NSToolbar(identifier: NSToolbar.Identifier(rawValue: "TheToolbarIdentifier"))
+        toolbar = NSToolbar(identifier: "TheToolbarIdentifier")
         toolbar.allowsUserCustomization = true
         toolbar.delegate = self
         self.window?.toolbar = toolbar
@@ -52,6 +52,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate {
         indicator.isIndeterminate = false
         window.contentView?.addSubview(indicator)
         
+        var numOfFrames = 0.0
+        
     }
     
     func toolbar(_ toolbar: NSToolbar, itemForItemIdentifier itemIdentifier: NSToolbarItem.Identifier, willBeInsertedIntoToolbar flag: Bool) -> NSToolbarItem? {
@@ -64,7 +66,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate {
     toolbarItem = NSToolbarItem(itemIdentifier: itemIdentifier)
     toolbarItem.label = infoDictionary["title"]!
             
-    let iconImage = NSImage(named: NSImage.Name(rawValue: infoDictionary["icon"]!))
+    let iconImage = NSImage(named: infoDictionary["icon"]!)
     let button = NSButton(frame: NSRect(x: 0, y: 0, width: 40, height: 40))
     button.title = ""
     button.image = iconImage
@@ -95,6 +97,49 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate {
         print("toolbarDidRemoveItem", (notification.userInfo?["item"] as? NSToolbarItem)?.itemIdentifier ?? "")
     }
     
+    func getNumberOfFrames(inputFilePath: String, callback: @escaping (Bool) -> Void?) -> (Process, DispatchWorkItem)? {
+        guard let launchPath = Bundle.main.path(forResource: "ffmpeg", ofType: "") else {
+            return nil
+        }
+        
+        let process = Process()
+        let task = DispatchWorkItem {
+            process.launchPath = launchPath
+            process.arguments = [
+            "-i", inputFilePath
+            ]
+            
+            let pipe = Pipe()
+            process.standardError = pipe
+            let outHandle = pipe.fileHandleForReading.readDataToEndOfFile()
+            let output = String(data:outHandle, encoding: .utf8)!
+            print(output)
+            
+            DispatchQueue.main.sync {
+            do {
+            let regex = try! NSRegularExpression(pattern: "NUMBER_OF_FRAMES: (.*)", options: NSRegularExpression.Options.caseInsensitive)
+            let matches = regex.matches(in: output, options: [], range: NSRange(location: 0, length: output.utf16.count))
+            
+            if let match = matches.first {
+                let range = match.range(at:1)
+                if let swiftRange = Range(range, in: output) {
+                    let numOfFrames = output[swiftRange]
+                    print("NUMBER_OF_FRAMES: ", numOfFrames)
+                }
+            }
+            } catch {
+              }
+            }
+            process.launch()
+            process.terminationHandler = { process in
+                callback(process.terminationStatus == 0)
+            }
+        
+        }
+        DispatchQueue.global(qos: .userInitiated).async(execute: task)
+        return (process, task)
+    }
+    
     func changeContainer(inputFilePath: String, outputFilePath: String, callback: @escaping (Bool) -> Void) -> (Process, DispatchWorkItem)? {
         guard let launchPath = Bundle.main.path(forResource: "ffmpeg", ofType: "") else {
             return nil
@@ -116,23 +161,47 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate {
             
             outHandle.readabilityHandler = { pipe in
                 if let line = String(data: pipe.readData(ofLength: 300), encoding: String.Encoding.utf8) {
-                    
+                   //print(line)
+    
                     DispatchQueue.main.sync {
                         do {
-                            let regex = try NSRegularExpression(pattern: "frame=(.*)", options: NSRegularExpression.Options.caseInsensitive)
+                        //print(line)
+                            let regex = try NSRegularExpression(pattern: "frame=(.*)")
+                            let regex2 = try NSRegularExpression(pattern: "time=(.*)")
                             let matches = regex.matches(in: line, options: [], range: NSRange(location: 0, length: line.utf16.count))
-                            
+                            let matches2 = regex2.matches(in: line, options: [], range: NSRange(location: 0, length: line.utf16.count))
                             if let match = matches.first {
-                                let range = match.range(at:1)
-                                if let swiftRange = Range(range, in: line) {
-                                    let name = line[swiftRange]
-                                    
-                                    if let range = name.range(of: " ") {
-                                        let firstPart = name[(name.startIndex)..<range.lowerBound]
-                                        if firstPart != "" {
-                                            self.indicator.doubleValue = (Double(firstPart))!/61629.00
-                                            print(self.indicator.doubleValue)
+                                if let match2 = matches2.first {
+                                
+                                    let range = match.range(at:1)
+                                    let range2 = match2.range(at:1)
+                                
+                                    if let swiftRange = Range(range, in: line) {
+                                        if let swiftRange2 = Range(range2, in: line) {
+                                        
+                                        let name = line[swiftRange]
+                                            let name2 = line[swiftRange2]
+                                        
+                                        if let range = name.range(of: " ") {
+                                            if let range2 = name2.range(of: " ") {
+                                            
+                                            let currentFrame = name[(name.startIndex)..<range.lowerBound]
+                                                let numberOfFrames = name2[(name2.startIndex)..<range2.lowerBound]
+                                            
+                                            if currentFrame != "" {
+                                                let numberOfFrames = name2[(name2.startIndex)..<range2.lowerBound]
+                                                
+                                                print(currentFrame)
+                                                if numberOfFrames != "" {
+                                                    print(numberOfFrames)
+                                                }
+                                                
+                                                
+                                                    //self.indicator.doubleValue = (Double(currentFrame))!/numberOfFrames
+                                            }
                                         }
+                                    }
+                        }
                                     }
                                 }
                             }
@@ -140,11 +209,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate {
                             // regex was bad!
                         }
                         }
-                        }
-                    }
-            func getDocumentsDirectory() -> URL {
-                let paths = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
-                return paths[0]
+                }
             }
         process.launch()
         process.terminationHandler = { process in
@@ -178,7 +243,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDelegate {
                 let openPath = result!.path
                 let savePathURL = result!.deletingPathExtension().appendingPathExtension("mp4")
                 let savePath = savePathURL.path
-                changeContainer(inputFilePath: openPath, outputFilePath: savePath, callback: { result in self.printSomething(text: savePath)})
+                getNumberOfFrames(inputFilePath: openPath, callback: { result in self.printSomething(text: savePath)})
+//                changeContainer(inputFilePath: openPath, outputFilePath: savePath, callback: { result in self.printSomething(text: savePath)})
             }
         } else {
             // User clicked on "Cancel"
